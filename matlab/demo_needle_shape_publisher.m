@@ -1,5 +1,5 @@
 
-%% needle_shape_publisher.m
+%% demo_needle_shape_publisher.m
 %
 % script to publish the needle shape (testing script)
 %
@@ -9,8 +9,8 @@ clear;
 %% Setup
 % setup namespace
 namespace = '/needle';
-needlepose_pub_name = strcat(namespace, '/state/pose');
-entrypoint_pub_name = strcat(namespace, '/state/skin_entry');
+needlepose_pub_name = '/stage/state/needle_pose';
+entrypoint_pub_name = '/subject/state/skin_entry';
 
 % setup needle shape publisher
 needle_mechfile  = fullfile("../needle_data/shapesensing_needle_properties.mat");
@@ -33,8 +33,7 @@ helper.shape_sub   = ros2subscriber(helper.node, '/needle/state/shape', @needles
 disp("Press [ENTER] to start publishing.")
 pause;
 L = 0; entrypt = [1;0;0];
-fig = figure(1);
-needleshape_talker.current_L = L;
+% needleshape_talker.current_L = L;
 while true
     pose_msg = generate_pose_msg(L, 0);
     skinentry_msg = generate_skinentry_msg(entrypt);
@@ -58,16 +57,18 @@ function msg = generate_pose_msg(L, theta_rot)
 end
 
 function needlepose_cb(msg)
-%     fprintf("PoseSub: I heard z: %.2f, ang_z: %.2f\n", msg.position.z, msg.orientation.z);
+%     fprintf("PoseSub: I heard z: %.2f, ang_z: %.2f\n", msg.pose.position.z, msg.pose.orientation.z);
 end
 
 function needleshape_cb(msg)
    % grab the positions
    [pmat, ~] = NeedleShapePublisher.posearray2shape(msg);
    
-   figure(1);
-   plot3(pmat(3,:), pmat(1,:), pmat(2,:));
-   axis equal;
+   disp("Got needle shape");
+   
+%    figure(1);
+%    plot3(pmat(3,:), pmat(1,:), pmat(2,:));
+%    axis equal;
 
 end
 

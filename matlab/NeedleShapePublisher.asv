@@ -80,7 +80,7 @@ classdef NeedleShapePublisher < handle
             curr_pub_name = strcat(options.ns, '/state/shape');
             pred_pub_name = strcat(options.ns, '/state/predicted_shape');
             sensor_sub_name = strcat(options.ns, '/sensor/processed');
-            needlepose_sub_name = '/stage/state/needle_pose';
+            needlepose_sub_name = '/stage/state/pose';
             entrypoint_sub_name = '/subject/state/skin_entry';
             
             % configure node, publishers and subscibers
@@ -103,8 +103,6 @@ classdef NeedleShapePublisher < handle
            obj.current_L = pose_msg.pose.position.z; 
            
            current_orientation = pose_msg.pose.orientation.z;
-%            disp("New current length:");
-%            disp(obj.current_L);
            
         end
         % callback to publish the needle shape
@@ -173,8 +171,8 @@ classdef NeedleShapePublisher < handle
         % callback to update skin entry point
         function skin_entry_cb(obj, msg)
             obj.current_entry_point = [msg.point.x; msg.point.y; msg.point.z];
-%             disp("New entry point:");
-%             disp(reshape(obj.current_entry_point,1,[]));
+            disp("New entry point:");
+            disp(obj.current_entry_point);
             
         end
     end
