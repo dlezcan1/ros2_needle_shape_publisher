@@ -7,6 +7,8 @@
 
 clear; 
 %% Setup
+global needle_shape
+
 % setup namespace
 namespace = '/needle';
 needlepose_pub_name = '/stage/state/needle_pose';
@@ -32,15 +34,15 @@ helper.shape_sub   = ros2subscriber(helper.node, '/needle/state/shape', @needles
 %% Run through the loop
 disp("Press [ENTER] to start publishing.")
 pause;
-L = 0; entrypt = [1;0;0];
-% needleshape_talker.current_L = L;
+L = 50; entrypt = [1;2;3];
+disp("Publishing needle shape along with helper node.");
 while true
     pose_msg = generate_pose_msg(L, 0);
     skinentry_msg = generate_skinentry_msg(entrypt);
     helper.pose_pub.send(pose_msg);
     helper.entrypt_pub.send(skinentry_msg);
 %     L = L + 5;
-    needleshape_talker.publish_shape_cb();
+    needleshape_talker.publish_shape();
     pause(0.1);
 end
 
@@ -61,14 +63,16 @@ function needlepose_cb(msg)
 end
 
 function needleshape_cb(msg)
-   % grab the positions
+   global needle_shape
+    % grab the positions
    [pmat, ~] = NeedleShapePublisher.posearray2shape(msg);
+   needle_shape = pmat;
    
    disp("Got needle shape");
    
-%    figure(1);
-%    plot3(pmat(3,:), pmat(1,:), pmat(2,:));
-%    axis equal;
+   figure(1);
+   plot3(pmat(3,:), pmat(1,:), pmat(2,:));
+   axis equal;
 
 end
 

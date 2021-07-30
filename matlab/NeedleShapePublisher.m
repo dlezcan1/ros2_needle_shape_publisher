@@ -98,6 +98,16 @@ classdef NeedleShapePublisher < handle
                                                 'geometry_msgs/PointStamped');
             obj.sub_timeout = options.timeout;
         end
+        
+        % generate a straight needle insertion
+        function [pmat, Rmat] = generate_straight_needle(obj, L)
+            z = (L - obj.needleLength):0.5:0;
+            pmat = [zeros(2,length(z)); z] + obj.current_entry_point;
+            
+            Rmat = repmat(eye(3), 1,1,length(z));
+            
+        end
+        
         % callback to update needle shape parateters
         function needlepose_cb(obj, pose_msg)
            obj.current_L = pose_msg.pose.position.z; 
@@ -107,11 +117,18 @@ classdef NeedleShapePublisher < handle
 %            disp(obj.current_L);
            
         end
-        % callback to publish the needle shape
-        function publish_shape_cb(obj)
+        
+        % publish the needle shape
+        function publish_shape(obj)
             % check for current length viable
             if all(obj.current_L <= obj.sensorLocations)
                 return;
+            end
+            
+            % make sure that the current length is less than the entire
+            % length of the needle
+            if (obj.current_L > obj.needleLength)
+                error("The current length is longer than the needle's total length");
             end
             
             % see if there is a current entry point
@@ -128,23 +145,21 @@ classdef NeedleShapePublisher < handle
             end
             fbg_peaks = fbg_peaks/obj.num_samples;
             
-%             % tensor way includes timeout reading
-%             fbg_peaks = zeros(obj.num_channels, obj.num_activeAreas, 0);  
-%             for i = 1:obj.num_samples
-%                 fbg_msg = receive(obj.sensor_sub, obj.sub_timeout);
-%                 fbg_peaks(:,:,i) = obj.parseFBGPeaks(fbg_msg); % tensor
-%             end
-%             fbg_peaks = mean(fbg_peaks,3); % tensor            
-
             % calibrate sensors and determine needle shape
             theta0 = 0; % TODO: change to current pose
             curvatures = calibrate_fbgsensors(fbg_peaks, obj.sensorCalMatrices);
             [pmat, wv, Rmat, kc, w_init] = singlebend_needleshape(curvatures, ...
                                             obj.sensorLocations, obj.current_L,...
                                             obj.kc_i, obj.w_init_i, theta0);
+            
+            % generate the straight needle portion
+            [pmat_s, Rmat_s] = obj.generate_straight_needle(obj.current_L);                        
+            
+            pmat_t = [pmat_s(:,1:end-1), pmat + pmat_s(:,end) + obj.current_entry_point];
+            Rmat_t = cat(3, Rmat_s(:,:,1:end-1), Rmat);
                                         
             % parse the position and Rmat into a geometry_msgs/PoseArray msg
-            poseArr_msg = NeedleShapePublisher.shape2posearray(pmat, Rmat);
+            poseArr_msg = NeedleShapePublisher.shape2posearray(pmat_t, Rmat_t);
             
             % publish the message
             obj.current_pub.send(poseArr_msg);
@@ -153,6 +168,7 @@ classdef NeedleShapePublisher < handle
             obj.kc_i = kc;
             obj.w_init_i = w_init;
         end
+        
         % parse FBG peak message
         function [peaks, peaks_struct] = parseFBGPeaks(obj, fbg_msg)
            % fbg_msg is of type std_msgs/Float64MultiArray 
@@ -170,6 +186,7 @@ classdef NeedleShapePublisher < handle
                idx = idx + size_i;
             end
         end
+        
         % callback to update skin entry point
         function skin_entry_cb(obj, msg)
             obj.current_entry_point = [msg.point.x; msg.point.y; msg.point.z];
@@ -178,6 +195,7 @@ classdef NeedleShapePublisher < handle
             
         end
     end
+    
     methods(Static)
        % turn needle shape pose into PoseArray
        function poseArray = shape2posearray(pmat, Rmat)
@@ -205,6 +223,8 @@ classdef NeedleShapePublisher < handle
               poseArray.poses(i) = pose_i;
           end
        end
+       
+       % unpack the needle shape from a pose array
        function [pmat, Rmat] = posearray2shape(msg)
            N = numel(msg.poses);
            pmat = zeros(3,N);
@@ -223,6 +243,7 @@ classdef NeedleShapePublisher < handle
                Rmat(:,:,i) = quat2rotm(quat);
            end
        end
+       
        % function to parse FBG json into a new object
        function obj = fromFBGneedlefiles(json_filename, needle_mechanics_file, options)
            arguments

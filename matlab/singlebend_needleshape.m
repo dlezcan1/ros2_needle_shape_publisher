@@ -93,6 +93,7 @@ end
 % cost function for needle shape
 function y = costfn_shape_singlebend(eta,data,s_index_meas,ds,N,B,Binv,scalef,weights) 
     weights = weights/sum(weights, 'all');
+    weights = weights(1:length(s_index_meas));
     % unpack the variables
     w_init = eta(1:3); 
     kc = eta(4); 
