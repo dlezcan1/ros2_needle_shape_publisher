@@ -108,6 +108,78 @@ classdef NeedleShapePublisher < handle
             
         end
         
+        % generate the air portion of the needle
+        function [pmat, Rmat] = generate_air_needle(obj, entrypt)
+           if isempty(entrypt)
+               return;
+           end
+           
+           % get the coefficients of the quadratic
+           if entrypt(3) > 0
+               a_x = entrypt(1)/entrypt(3)^2;
+               a_y = entrypt(1)/entrypt(3)^2;
+           
+               % generate the quadratic needle shape in lots of points
+               z = reshape(linspace(0, entrypt(3), 100), [], 1);
+               pts = [a_x * z.^2, a_y * z.^2, z];
+               L_air = arclength(pts);
+               s_interp = 0:0.5:L_air;
+               
+               pts_interp = interp_pts(pts, s_interp)'; % 0.5 mm increments
+               
+               % TODO generate rotation matrices 
+               Rmat = repmat(eye(3), 3, size(pts_interp,2));
+               
+           elseif entrypt(3) == 0 % at the entry location
+               pmat = zeros(3,1);
+               Rmat = eye(3);
+               
+           else
+               error("z coordinate of entry point must be >= 0");
+           end
+           
+        end
+        
+        % generate the current needle shape from the measured curvatures
+        function [pmat, Rmat] = generate_needleshape(obj, curvatures)
+            % check for all paremters to be configured
+            if all(obj.current_L <= obj.sensorLocations)
+                return;
+            end
+            
+            % make sure that the current length is less than the entire
+            % length of the needle
+            if (obj.current_L > obj.needleLength)
+                error("The current length is longer than the needle's total length");
+            end
+            
+            % see if there is a current entry point
+            if isempty(obj.current_entry_point)
+                return;
+            end
+            
+            % generate straight needle 
+            [pmat_s, Rmat_s] = obj.generate_straight_needle(obj.current_L);
+            
+            % generate the out-of-air needle portion
+            [pmat_a, Rmat_a] = obj.generate_air_needle(obj.current_entry_point);
+            
+            % generate the in-tissue needle portion
+            [pmat_t, ~, Rmat_t] = singlebend_Rinit_needleshape(curvatures, ...
+                                                               obj.sensorLocations,...
+                                                               obj.current_L, ...
+                                                               obj.kc_i, obj.w_init_i,...
+                                                               Rmat_a(:,:,end),...
+                                                               obj.aaReliabilityWeights);
+            pmat_t = pmat_t + pmat_a(:,end); % include the offset 
+
+
+            % combine the needle shapes from the sections
+            pmat = [pmat_s(:,1:end-1), pmat_a(:,1:end-1), pmat_t];
+            Rmat = cat(3, Rmat_s(:,:,1:end-1), Rmat_a(:,:,1:end-1), Rmat_t);
+            
+        end
+        
         % callback to update needle shape parateters
         function needlepose_cb(obj, pose_msg)
            obj.current_L = pose_msg.pose.position.z; 
@@ -136,7 +208,7 @@ classdef NeedleShapePublisher < handle
                 return;
             end
             
-            % gather FBG samples and average
+            % gather FBG samples and averagemv 
             fbg_peaks = zeros(obj.num_channels, obj.num_activeAreas);
             for i = 1:obj.num_samples
                 fbg_msg = receive(obj.sensor_sub);
