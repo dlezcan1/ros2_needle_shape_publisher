@@ -4,9 +4,9 @@ Author: Dimitri Lezcano
 This is a repository for publishing the needle shape for the Sensorized Needle Robot project in collaboration with Brigham Women's Hospital.
 
 ### Dependencies
-MATLAB R2021a
-ROS Toolbox
-Optimization Toolbox
+* MATLAB R2021a
+* ROS Toolbox
+* Optimization Toolbox
 
 ## Description
 NeedleShapePublisher class 
