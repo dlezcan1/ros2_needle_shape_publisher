@@ -3,6 +3,11 @@ Author: Dimitri Lezcano
 
 This is a repository for publishing the needle shape for the Sensorized Needle Robot project in collaboration with Brigham Women's Hospital.
 
+### Needle Frame Orientation
+The needle frame's origin is set to be the end of the insertion needle guide. The orientation of the needle frame is given by
+
+<img src="info/needle_frame.png" alt="Needle Frame Orientation" style="float: center"/>
+
 ### Dependencies
 * MATLAB R2021a
 * ROS Toolbox
