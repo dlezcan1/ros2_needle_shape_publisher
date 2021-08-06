@@ -108,7 +108,7 @@ classdef NeedleShapePublisher < handle
             
         end
         
-        % generate the air portion of the needle
+        % generate the air portion of the needle (cubic)
         function [pmat, Rmat] = generate_air_needle(obj, entrypt)
            if isempty(entrypt)
                return;
@@ -116,19 +116,25 @@ classdef NeedleShapePublisher < handle
            
            % get the coefficients of the quadratic
            if entrypt(3) > 0
-               a_x = entrypt(1)/entrypt(3)^2;
-               a_y = entrypt(1)/entrypt(3)^2;
+%                a_x = entrypt(1)/entrypt(3)^2; % quadratic
+%                a_y = entrypt(2)/entrypt(3)^2; % quadratic
+               a_x = entrypt(1)/(-2 * entrypt(3)^2); % cubic
+               a_y = entrypt(2)/(-2 * entrypt(3)^2); % cubic
            
                % generate the quadratic needle shape in lots of points
                z = reshape(linspace(0, entrypt(3), 100), [], 1);
-               pts = [a_x * z.^2, a_y * z.^2, z];
+%                pts = [a_x * z.^2, a_y * z.^2, z]; % quadratic
+               pts = [a_x * z.^3 - 3 * a_x * entrypt(3) * z.^2;
+                      a_y * z.^3 - 3 * a_y * entrypt(3) * z.^2;
+                      z]; % cubic
                L_air = arclength(pts);
-               s_interp = 0:0.5:L_air;
+               ds = 0.5;
+               s_interp = 0:ds:L_air;
                
                pts_interp = interp_pts(pts, s_interp)'; % 0.5 mm increments
                
                % TODO generate rotation matrices 
-               Rmat = repmat(eye(3), 3, size(pts_interp,2));
+               Rmat = FSframe(pts_interp, ds);
                
            elseif entrypt(3) == 0 % at the entry location
                pmat = zeros(3,1);
