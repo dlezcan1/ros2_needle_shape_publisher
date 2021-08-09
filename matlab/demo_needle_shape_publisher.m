@@ -1,4 +1,3 @@
-
 %% demo_needle_shape_publisher.m
 %
 % script to publish the needle shape (testing script)
@@ -6,6 +5,7 @@
 % - written by: Dimitri Lezcano
 
 clear; 
+!taskkill /f /im libmwros2server.exe & rem shutdown existing matlab ROS 2 servers for windows
 %% Setup
 global needle_shape
 
@@ -34,7 +34,7 @@ helper.shape_sub   = ros2subscriber(helper.node, '/needle/state/shape', @needles
 %% Run through the loop
 disp("Press [ENTER] to start publishing.")
 pause;
-L = 50; entrypt = [1;2;3];
+L = 50; entrypt = [0;0;5];
 disp("Publishing needle shape along with helper node.");
 while true
     pose_msg = generate_pose_msg(L, 0);
@@ -42,7 +42,7 @@ while true
     helper.pose_pub.send(pose_msg);
     helper.entrypt_pub.send(skinentry_msg);
 %     L = L + 5;
-    needleshape_talker.publish_shape();
+    [p, R] = needleshape_talker.generate_needleshape(zeros(2,3));
     pause(0.1);
 end
 

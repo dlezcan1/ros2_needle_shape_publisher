@@ -61,7 +61,7 @@ function [pos, wv, Rmat, kc, w_init] = singlebend_Rinit_needleshape(curvatures, 
     % initial cost values
     eta = [w_init_i; kc_i];
     scalef0 = 1;
-    Cval = costfn_shape_singlebend(eta, curvs_aa, s_idx_aa, ds, length(s), B, Binv, scalef0, weights);
+    Cval = costfn_shape_singlebend(eta, curvs_aa, s_idx_aa, R0, ds, length(s), B, Binv, scalef0, weights);
     scalef = 1/Cval;
     
     % optimization

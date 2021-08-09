@@ -99,17 +99,10 @@ classdef NeedleShapePublisher < handle
             obj.sub_timeout = options.timeout;
         end
         
-        % generate a straight needle insertion
-        function [pmat, Rmat] = generate_straight_needle(obj, L)
-            z = (L - obj.needleLength):0.5:0;
-            pmat = [zeros(2,length(z)); z] + obj.current_entry_point;
-            
-            Rmat = repmat(eye(3), 1,1,length(z));
-            
-        end
-        
         % generate the air portion of the needle (cubic)
         function [pmat, Rmat] = generate_air_needle(obj, entrypt)
+           pmat = [];
+           Rmat = [];
            if isempty(entrypt)
                return;
            end
@@ -122,19 +115,45 @@ classdef NeedleShapePublisher < handle
                a_y = entrypt(2)/(-2 * entrypt(3)^2); % cubic
            
                % generate the quadratic needle shape in lots of points
-               z = reshape(linspace(0, entrypt(3), 100), [], 1);
+               z = reshape(linspace(0, entrypt(3), 100), 1, []);
 %                pts = [a_x * z.^2, a_y * z.^2, z]; % quadratic
                pts = [a_x * z.^3 - 3 * a_x * entrypt(3) * z.^2;
                       a_y * z.^3 - 3 * a_y * entrypt(3) * z.^2;
-                      z]; % cubic
+                      z]'; % cubic
                L_air = arclength(pts);
                ds = 0.5;
                s_interp = 0:ds:L_air;
                
-               pts_interp = interp_pts(pts, s_interp)'; % 0.5 mm increments
                
-               % TODO generate rotation matrices 
-               Rmat = FSframe(pts_interp, ds);
+               pmat = interp_pts(pts, s_interp)'; % 0.5 mm increments
+               
+               % generate rotation matrices 
+               Rmat = repmat(eye(3), 1, 1, size(pmat,2));
+               for i = 2:size(pmat,2)
+                   dz = pmat(3,i) - pmat(3,i-1);
+                   
+                   % compute the tangent vector
+                   tv = [pmat(1:2, i) - pmat(1:2,i-1); dz]/dz; 
+                   tv = tv/norm(tv); % normalize the vector
+                   
+                   % compute normal vector (easy if possible)
+                   if tv(2) == 0
+                       nv = [0;1;0];
+                   elseif tv(1) == 0
+                       nv = [1;0;0];
+                   else
+                       nv = [1; 1; -tv(1) - tv(2)];
+                       nv = nv/norm(nv); % normalize the vector
+                   end
+                   
+                   % compute binormal vector
+                   bv = cross(nv, tv);
+                   bv = bv/norm(bv); % normalize the vector
+                   
+                   % add the new matrix
+                   Rmat(:,:,i) = [bv, nv, tv];
+               end
+               
                
            elseif entrypt(3) == 0 % at the entry location
                pmat = zeros(3,1);
@@ -142,13 +161,25 @@ classdef NeedleShapePublisher < handle
                
            else
                error("z coordinate of entry point must be >= 0");
+               
            end
            
+        end
+        
+        % generate a straight needle insertion
+        function [pmat, Rmat] = generate_straight_needle(obj, L)
+            z = (L - obj.needleLength):0.5:0;
+            pmat = [zeros(2,length(z)); z] + obj.current_entry_point;
+            
+            Rmat = repmat(eye(3), 1,1,length(z));
+            
         end
         
         % generate the current needle shape from the measured curvatures
         function [pmat, Rmat] = generate_needleshape(obj, curvatures)
             % check for all paremters to be configured
+            pmat = [];
+            Rmat = [];
             if all(obj.current_L <= obj.sensorLocations)
                 return;
             end

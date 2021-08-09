@@ -1,6 +1,6 @@
 %% needle_shape_publisher.m
 %
-% script to publish the needle shape (testing script)
+% script to publish the needle shape
 %
 % - written by: Dimitri Lezcano
 
@@ -30,6 +30,7 @@ pause;
 disp("Publishing needle shape.");
 while true
     needleshape_talker.publish_shape();
+    disp("Published needle shape");
     pause(timer_length);
 end
 
