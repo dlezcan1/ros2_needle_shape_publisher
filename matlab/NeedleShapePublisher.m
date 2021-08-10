@@ -219,9 +219,19 @@ classdef NeedleShapePublisher < handle
         
         % callback to update needle shape parateters
         function needlepose_cb(obj, pose_msg)
-           obj.current_L = pose_msg.pose.position.z; 
+           % message orientation
+           % - header
+           % - pose
+           %    - position
+           %        - x: right,left (+, -) displacement of needle guide
+           %        - y: insertion depth outside the needle guide
+           %        - z: up, down (+, -) displacement of needle guide
+           %    - orientation
+           %        - y: rotation angle of the needle
+          
+           obj.current_L = pose_msg.pose.position.y;
            
-           current_orientation = pose_msg.pose.orientation.z;
+           current_orientation = pose_msg.pose.orientation.y;
 %            disp("New current length:");
 %            disp(obj.current_L);
            

@@ -50,11 +50,13 @@ end
 function msg = generate_pose_msg(L, theta_rot)
     msg = ros2message('geometry_msgs/PoseStamped');
     
-    msg.pose.position.z = L;
+    msg.pose.position.x = 0; % lateral (left-right) displacement
+    msg.pose.position.z = 0; % vertical (up-down)   displacement
+    msg.pose.position.y = L; % insertion depth
     
     q = rotm2quat(rotz(theta_rot));
     msg.pose.orientation.w = q(1);
-    msg.pose.orientation.z = q(4);
+    msg.pose.orientation.y = q(4); % 
     
 end
 
