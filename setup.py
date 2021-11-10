@@ -15,11 +15,12 @@ setup(
     zip_safe=True,
     maintainer='Dimitri Lezcano',
     maintainer_email='dlezcan1@jhu.edu',
-    description='TODO: Package description',
+    description='Needle Shape Sensing Python node',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+                'needle_demo = needle_shape_publisher.shape_sensing_needle:main'
         ],
     },
 )
