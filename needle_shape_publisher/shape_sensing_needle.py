@@ -11,6 +11,8 @@ from std_msgs.msg import Header, Float64MultiArray
 from geometry_msgs.msg import Pose, PoseArray
 from rcl_interfaces.msg import ParameterDescriptor, SetParametersResult
 
+# services
+
 # custom package
 from needle_shape_sensing import geometry
 from needle_shape_sensing.intrinsics import SHAPETYPE as NEEDLESHAPETYPE
@@ -27,21 +29,22 @@ class ShapeSensingNeedleNode( Node ):
     PARAM_AAS = ".".join( [ PARAM_NEEDLE, "activeAreas" ] )  # needle number of active areas
     PARAM_AAWEIGHTS = ".".join( [ PARAM_AAS, "weights" ] )  # needle AA reliability weightings
     PARAM_SLOCS = ".".join( [ PARAM_AAS, 'locations' ] )  # needle AA locations from tip of the needle
-    PARAM_NUMSIGNALS = ".".join( [ PARAM_NEEDLE, "sensor.numberSignals" ] )
-    PARAM_KCINIT = ".".join( [ PARAM_NEEDLE, 'optimizer.initial_kappa_c' ] )
-    PARAM_WINIT = ".".join( [ PARAM_NEEDLE, 'optimizer.initial_w_init' ] )
+    PARAM_NUMSIGNALS = ".".join( [ PARAM_NEEDLE, "sensor.numberSignals" ] )  # number of signals to gather for sampling
+    PARAM_KCINIT = ".".join( [ PARAM_NEEDLE, 'optimizer.initial_kappa_c' ] )  # initial kappa_c for optimization
+    PARAM_WINIT = ".".join( [ PARAM_NEEDLE, 'optimizer.initial_w_init' ] )  # initial omega_init for optimization
+    PARAM_NEEDLESHAPE = ".".join( (PARAM_NEEDLE, "shape_type") )  # unused, needle shape type
 
     def __init__( self, name="ShapeSensingNeedle" ):
         super().__init__( name )
 
         # declare and get parameters
         pd_needleparam = ParameterDescriptor( name=self.PARAM_NEEDLEPARAMFILE, type=Parameter.Type.STRING.value,
-                                              description='needle parameter json file.' )
+                                              description='needle parameter json file.', read_only=True )
         pd_numsignals = ParameterDescriptor( name=self.PARAM_NUMSIGNALS, type=Parameter.Type.INTEGER.value )
         pd_kc = ParameterDescriptor( name=self.PARAM_KCINIT, type=Parameter.Type.DOUBLE_ARRAY.value,
                                      description="kappa_c initalization values" )
         pd_winit = ParameterDescriptor( name=self.PARAM_WINIT, type=Parameter.Type.DOUBLE_ARRAY.value,
-                                        descripton="omega_init initalization values (3D vector)" )
+                                        description="omega_init initialization values (3D vector)" )
 
         needleparam_file = self.declare_parameter( self.PARAM_NEEDLEPARAMFILE, descriptor=pd_needleparam ). \
             get_parameter_value().string_value
@@ -49,7 +52,8 @@ class ShapeSensingNeedleNode( Node ):
                                                    value=200 ).get_parameter_value().integer_value
         self.kc_i = self.declare_parameter( self.PARAM_KCINIT, descriptor=pd_kc,
                                             value=[ 0.002 ] ).get_parameter_value().double_array_value
-        self.w_init_i = np.array( self.declare_parameter( self.PARAM_KCINIT, descriptor=pd_winit, value=[ 0.002, 0, 0 ]
+        self.w_init_i = np.array( self.declare_parameter( self.PARAM_WINIT, descriptor=pd_winit,
+                                                          value=[ self.kc_i[ 0 ], 0.0, 0.0 ]
                                                           ).get_parameter_value().double_array_value )
 
         # get shape-sensing FBG Needle object
@@ -58,9 +62,11 @@ class ShapeSensingNeedleNode( Node ):
 
             # make all positive since we are using processed wavelengths
             self.ss_needle.ref_wavelengths = np.ones_like( self.ss_needle.ref_wavelengths )
+            self.ss_needle.current_depth = 130 # set the current depth
 
             # container of wavelengths
-            self.__wavelength_container = np.zeros( (self.num_samples, self.ss_needle.num_activeAreas) )
+            self.__wavelength_container = np.zeros( (self.num_samples,
+                                                     self.ss_needle.num_channels * self.ss_needle.num_activeAreas) )
             self.__wavelength_container_idx = 0  # the row index to place the sample
             self.__wavelength_container_full = False  # whether we have collected a full number of samples
 
@@ -138,7 +144,7 @@ class ShapeSensingNeedleNode( Node ):
         successful = True
         reasons = [ ]
         for param in parameters:
-            if param.name == self.PARAM_NEEDLEPARAMFILE:
+            if param.name == self.PARAM_NEEDLEPARAMFILE:  # read-only, but kep just in case.
                 # grab old parameters
                 shapetype = self.ss_needle.current_shapetype
                 insertion_params = self.ss_needle.insertion_parameters
@@ -151,7 +157,7 @@ class ShapeSensingNeedleNode( Node ):
                     self.ss_needle = ss_needle
                     self.ss_needle.ref_wavelengths = np.ones_like(
                             self.ss_needle.ref_wavelengths )  # proc'd signal input
-                    self.ss_needle.current_shapetype = shapetype
+                    self.ss_needle.__current_shapetype = shapetype
                     self.ss_needle.insertion_parameters = insertion_params
 
                     # logging
@@ -168,11 +174,14 @@ class ShapeSensingNeedleNode( Node ):
             elif param.name == self.PARAM_NUMSIGNALS:
                 num_samples = param.get_parameter_value().integer_value
                 try:
+                    self.get_logger().info( f"Updating number of signals to {num_samples}..." )
                     self.update_numsamples( num_samples )
+                    self.get_logger().info( f"Updated number of signals to {num_samples}." )
 
-                except ValueError:
+                except ValueError as e:
                     successful = False
-                    reasons.append( f"{self.PARAM_NUMSIGNALS} must be > 0" )
+                    reasons.append( f"{self.PARAM_NUMSIGNALS} must be > 0" + '\n' + str( e ) )
+                    self.get_logger().error( "Update failed. Did not set the updated number of signals." )
 
                 # except
             # elif: parameter: NUMSIGNALS
@@ -186,10 +195,13 @@ class ShapeSensingNeedleNode( Node ):
         """ Publish the 3D needle shape"""
         if self.__wavelength_container_full:
             # get needle shape
-            if self.ss_needle.current_shapetype & NEEDLESHAPETYPE.SINGLEBEND_SINGLELAYER == 0x01:  # single layer
+            self.get_logger().info(f"w_init_i shape: {self.w_init_i.shape}")
+            if self.ss_needle.current_shapetype & NEEDLESHAPETYPE.SINGLEBEND_SINGLELAYER == NEEDLESHAPETYPE.SINGLEBEND_SINGLELAYER:  # single layer
                 pmat, Rmat = self.ss_needle.get_needle_shape( self.kc_i[ 0 ], self.w_init_i )
+                self.get_logger().info("SINGLELAYER insertion")
 
             elif self.ss_needle.current_shapetype & NEEDLESHAPETYPE.SINGLEBEND_DOUBLELAYER == 0x02:  # 2 layers
+                self.get_logger().info( "SINGLEBEND_DOUBLELAYER insertion" )
                 if len( self.kc_i ) < 2:
                     pmat, Rmat = self.ss_needle.get_needle_shape( self.kc_i[ 0 ], self.kc_i[ 0 ], self.w_init_i )
                 else:
@@ -208,13 +220,20 @@ class ShapeSensingNeedleNode( Node ):
             self.kc_i = self.ss_needle.current_kc
             self.w_init_i = self.ss_needle.current_winit
 
+            # check to make sure messages are not None
+            if pmat is None or Rmat is None:
+                self.get_logger().warn(f"pmat or Rmat is None: {pmat}, {Rmat}")
+                self.get_logger().warn(f"Current shapetype: {self.ss_needle.current_shapetype}")
+                assert(self.ss_needle.current_shapetype == NEEDLESHAPETYPE.SINGLEBEND_SINGLELAYER)
+                return
+
             # generate pose message
-            header = Header( time=self.get_clock().now() )
+            header = Header( stamp=self.get_clock().now().to_msg() )
             msg_shape = self.poses2msg( pmat, Rmat, header=header )
 
             # generate kappa_c and w_init message
-            msg_kc = Float64MultiArray( d=self.kc_i )
-            msg_winit = Float64MultiArray( d=self.w_init_i.tolist() )
+            msg_kc = Float64MultiArray( data=self.kc_i )
+            msg_winit = Float64MultiArray( data=self.w_init_i.tolist() )
 
             # publish the messages
             self.pub_shape.publish( msg_shape )
@@ -265,12 +284,11 @@ class ShapeSensingNeedleNode( Node ):
 
     def set_needleparameters( self ):
         """ Set all of the needle parameters"""
-        needle_params = [ ]
-        needle_params.append( Parameter( self.PARAM_SLOCS, self.ss_needle.sensor_location_tip ) )
-        needle_params.append( Parameter( self.PARAM_CHS, self.ss_needle.num_channels ) )
-        needle_params.append( Parameter( self.PARAM_NEEDLELENGTH, self.ss_needle.length ) )
-        needle_params.append( Parameter( self.PARAM_NEEDLESN, self.ss_needle.serial_number ) )
-        needle_params.append( Parameter( self.PARAM_AAS, self.ss_needle.num_activeAreas ) )
+        needle_params = [ Parameter( self.PARAM_SLOCS, self.ss_needle.sensor_location_tip ),
+                          Parameter( self.PARAM_CHS, self.ss_needle.num_channels ),
+                          Parameter( self.PARAM_NEEDLELENGTH, self.ss_needle.length ),
+                          Parameter( self.PARAM_NEEDLESN, self.ss_needle.serial_number ),
+                          Parameter( self.PARAM_AAS, self.ss_needle.num_activeAreas ) ]
         if len( self.ss_needle.weights ) > 0:
             weights = list( self.ss_needle.weights.values() )
         else:
@@ -278,11 +296,18 @@ class ShapeSensingNeedleNode( Node ):
         needle_params.append( Parameter( self.PARAM_AAWEIGHTS, weights ) )
 
         try:
-            self.set_parameters( needle_params )
-            success = True
+            results = self.set_parameters( needle_params )  # not able-to since read-only
+            success = all( map( lambda x: x.successful, results ) )
+            if not success:
+                err_msg = "\n".join( map( lambda x: x.reason, results ) )
+                self.get_logger().error( "Error setting needle parameters:" )
+                self.get_logger().error( err_msg )
+
+            # if
+        # try
 
         except Exception as e:
-            self.get_logger().error( "Error setting needle paramters:" )
+            self.get_logger().error( "Error setting needle parameters:" )
             self.get_logger().error( e )
             success = False
 
@@ -297,7 +322,9 @@ class ShapeSensingNeedleNode( Node ):
         # get the FBG signals
         # TODO: perform appending by channel
         signals_dict = ShapeSensingNeedleNode.unpack_fbg_msg( msg )
-        signals = np.array( list( signals_dict.values() ) )  # to be improved
+        signals = np.array( list( signals_dict.values() ) ).ravel()  # to be improved
+        self.get_logger().debug(
+                f"Shape of signals: {signals.shape} | Shape of wl container: {self.__wavelength_container.shape}" )
 
         # add the signals to the container
         self.__wavelength_container[ self.__wavelength_container_idx ] = signals
@@ -318,7 +345,7 @@ class ShapeSensingNeedleNode( Node ):
 
     def update_numsamples( self, num_samples: int ):
         """ Update the number of FBG samples """
-        if num_samples > 0:
+        if num_samples <= 0:
             raise ValueError( "Number of samples must be > 0" )
 
         # if

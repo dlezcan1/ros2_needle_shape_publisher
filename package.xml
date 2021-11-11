@@ -8,10 +8,15 @@
   <license>TODO: License declaration</license>
 
   <depend>rclpy</depend>
+
+  <!-- Messages and services -->
   <depend>rcl_interfaces</depend>
   <depend>std_msgs</depend>
-  <depend>std_srvs</depend>
   <depend>geometry_msgs</depend>
+
+  <depend>std_srvs</depend>
+
+  <!-- Custom packages -->
   <depend>needle-shape-sensing</depend>
 
   <test_depend>ament_copyright</test_depend>
