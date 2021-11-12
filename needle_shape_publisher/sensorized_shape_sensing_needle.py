@@ -19,7 +19,8 @@ from needle_shape_sensing.intrinsics import SHAPETYPE as NEEDLESHAPETYPE
 from needle_shape_sensing.shape_sensing import ShapeSensingFBGNeedle
 
 
-class ShapeSensingNeedleNode( Node ):
+class SensorizedShapeSensingNeedleNode( Node ):
+    """ Class implementation of Shape-Sensing needle node with sensorized applications"""
     # PARAMETER NAMES
     PARAM_NEEDLE = "needle"
 
@@ -323,7 +324,7 @@ class ShapeSensingNeedleNode( Node ):
         # generate the message and add the individual poses
         msg = PoseArray( header=header )
         for i in range( N ):
-            msg.poses.append( ShapeSensingNeedleNode.pose2msg( pmat[ i ], Rmat[ i ] ) )
+            msg.poses.append( SensorizedShapeSensingNeedleNode.pose2msg( pmat[ i ], Rmat[ i ] ) )
 
         # for
 
@@ -384,7 +385,7 @@ class ShapeSensingNeedleNode( Node ):
         """ Call back to processed signals subscription"""
         # get the FBG signals
         # TODO: perform appending by channel
-        signals_dict = ShapeSensingNeedleNode.unpack_fbg_msg( msg )
+        signals_dict = SensorizedShapeSensingNeedleNode.unpack_fbg_msg( msg )
         signals = np.array( list( signals_dict.values() ) ).ravel()  # to be improved
         self.get_logger().debug(
                 f"Shape of signals: {signals.shape} | Shape of wl container: {self.__wavelength_container.shape}" )
@@ -469,13 +470,13 @@ class ShapeSensingNeedleNode( Node ):
     # unpack_fbg_msg
 
 
-# class: ShapeSensingNeedleNode
+# class: SensorizedShapeSensingNeedleNode
 
 
 def main( args=None ):
     rclpy.init( args=args )
 
-    ssneedle_node = ShapeSensingNeedleNode()
+    ssneedle_node = SensorizedShapeSensingNeedleNode()
 
     try:
         rclpy.spin( ssneedle_node )

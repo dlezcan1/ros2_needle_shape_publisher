@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-                'needle_demo = needle_shape_publisher.shape_sensing_needle:main'
+                'sensorized_shapesensing_needle = needle_shape_publisher.sensorized_shape_sensing_needle:main'
         ],
     },
 )
