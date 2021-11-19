@@ -1,19 +1,20 @@
-# ROS2 packages
-from geometry_msgs.msg import PoseArray, Point, Pose
-from needle_shape_sensing.intrinsics import SHAPETYPE as NEEDLESHAPETYPE
-from rclpy import Parameter
 import numpy as np
+
+# ROS2 packages
 import rclpy
+from rclpy import Parameter
+
+# messages
+from geometry_msgs.msg import PoseArray, Point, Pose
 from rcl_interfaces.msg import ParameterDescriptor
 from std_msgs.msg import Float64MultiArray, Header
 
-from needle_shape_publisher import utilities
-from .sensorized_shape_sensing_needle import NeedleNode
-
-
-# messages
 # services
+
 # custom package
+from needle_shape_sensing.intrinsics import SHAPETYPE as NEEDLESHAPETYPE
+from . import utilities
+from .sensorized_shape_sensing_needle import NeedleNode
 
 
 class ShapeSensingNeedleNode( NeedleNode ):
