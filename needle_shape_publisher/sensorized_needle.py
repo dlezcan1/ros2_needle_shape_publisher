@@ -7,14 +7,9 @@ from rclpy.parameter import Parameter
 from std_msgs.msg import Float64MultiArray, MultiArrayDimension, MultiArrayLayout
 from rcl_interfaces.msg import ParameterDescriptor, SetParametersResult
 
+# custom package
 from .sensorized_shape_sensing_needle import NeedleNode
 from . import utilities
-
-
-# custom package
-
-
-# services
 
 
 class SensorizedNeedleNode( NeedleNode ):
@@ -42,16 +37,16 @@ class SensorizedNeedleNode( NeedleNode ):
         # create subscriptions
         self.sub_signals = self.create_subscription( Float64MultiArray, 'sensor/processed', self.sub_signals_callback,
                                                      10 )
-
         # create publishers
-        self.pub_curvatures_timer = self.create_timer( 0.01, self.publish_curvatures )
         self.pub_curvatures = self.create_publisher( Float64MultiArray, 'state/curvatures', 10 )
+
+        # create timers
+        self.pub_curvatures_timer = self.create_timer( 0.01, self.publish_curvatures )
 
         # set parameter callback function
         self.add_on_set_parameters_callback( self.parameters_callback )
 
     # __init__
-
 
     def parameters_callback( self, parameters: List[ Parameter ] ):
         """ Parameter set calllbacks"""

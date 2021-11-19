@@ -8,6 +8,17 @@ from std_msgs.msg import Header
 from needle_shape_sensing import geometry
 
 
+def msg2pose( msg: Pose ):
+    """ Convert a Pose message into a pose"""
+    pos = np.array( [ msg.position.x, msg.position.y, msg.position.z ] )
+    quat = np.array( [ msg.orientation.w, msg.orientation.x, msg.orientation.y, msg.orientation.z ] )
+    R = geometry.quat2rotm( quat )
+
+    return pos, R
+
+
+# msg2pose
+
 def pose2msg( pos: np.ndarray, R: np.ndarray ):
     """ Turn a pose into a Pose message """
     msg = Pose()
