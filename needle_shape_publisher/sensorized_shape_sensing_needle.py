@@ -72,7 +72,7 @@ class NeedleNode(Node):
         if len( self.ss_needle.weights ) > 0:
             w = list( self.ss_needle.weights.values() )
         else:
-            w = (np.ones( len( self.ss_needle.num_activeAreas ) ) / self.ss_needle.num_activeAreas).tolist()
+            w = (np.ones( self.ss_needle.num_activeAreas ) / self.ss_needle.num_activeAreas).tolist()
 
         pd_aawgts = ParameterDescriptor( name=self.PARAM_AAWEIGHTS, type=Parameter.Type.DOUBLE_ARRAY.value,
                                          description="Active Area reliability weightings", read_only=True )

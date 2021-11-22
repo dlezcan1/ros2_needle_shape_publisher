@@ -23,18 +23,18 @@ def generate_launch_description():
             output='screen',
             emulate_tty=True,
             parameters=[ {
-                    'needle.paramFile'    : LaunchConfiguration( 'needleParamFile' ),
-                    'needle.numberSignals': LaunchConfiguration( 'numSignals' ),
+                    'needle.paramFile'               : LaunchConfiguration( 'needleParamFile' ),
+                    'needle.numberSignals'           : LaunchConfiguration( 'numSignals' ),
                     'needle.optimizer.max_iterations': LaunchConfiguration( 'optimMaxIterations' )
                     } ]
             )
 
     # add to launch description
-    ld.add_action(arg_needleparam)
-    ld.add_action(arg_numsignals)
-    ld.add_action(arg_optim_maxiter)
+    ld.add_action( arg_needleparam )
+    ld.add_action( arg_numsignals )
+    ld.add_action( arg_optim_maxiter )
 
-    ld.add_action(node_sensorizedneedle)
+    ld.add_action( node_sensorizedneedle )
 
     return ld
 

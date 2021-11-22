@@ -42,7 +42,7 @@ class ShapeSensingNeedleNode( NeedleNode ):
         self.ss_needle.optimizer.options[ 'options' ] = { 'maxiter': optim_maxiter }
         self.ss_needle.ref_wavelengths = np.ones_like( self.ss_needle.ref_wavelengths )
         self.ss_needle.current_depth = 125  # TODO: need to change insertion depth. Keep for testing
-        self.ss_needle.current_curvatures = np.zeros( (self.ss_needle.num_activeAreas, 2), dtype=float )
+        self.ss_needle.current_curvatures = np.zeros( (2, self.ss_needle.num_activeAreas), dtype=float )
 
         # configure current needle pose paramters
         self.current_insertion_pt = None
@@ -51,7 +51,7 @@ class ShapeSensingNeedleNode( NeedleNode ):
         # create publishers
         self.pub_kc = self.create_publisher( Float64MultiArray, 'state/kappac', 1 )
         self.pub_winit = self.create_publisher( Float64MultiArray, 'state/winit', 1 )
-        self.pub_shape = self.create_publisher( PoseArray, 'state/winit', 1 )
+        self.pub_shape = self.create_publisher( PoseArray, 'state/current_shape', 1 )
 
         # create subscriptions
         self.sub_curvatures = self.create_subscription( Float64MultiArray, 'state/curvatures',
@@ -124,7 +124,7 @@ class ShapeSensingNeedleNode( NeedleNode ):
     def sub_curvatures_callback( self, msg: Float64MultiArray ):
         """ Subscription to needle sensor curvatures """
         # grab the current curvatures
-        curvatures = np.reshape( msg.data, (-1, 2), order='F' )
+        curvatures = np.reshape( msg.data, (-1, 2), order='F' ).T
 
         # update the curvatures
         self.ss_needle.current_curvatures = curvatures
