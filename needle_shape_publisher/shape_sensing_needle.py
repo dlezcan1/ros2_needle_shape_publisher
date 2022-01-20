@@ -60,7 +60,7 @@ class ShapeSensingNeedleNode( NeedleNode ):
         self.sub_needlepose = self.create_subscription( Pose, 'state/pose', self.sub_needlepose_callback, 10 )
 
         # create timers
-        self.pub_shape_timer = self.create_timer( 3, self.publish_shape )
+        self.pub_shape_timer = self.create_timer( 0.05, self.publish_shape )
 
     # __init__
 
@@ -113,6 +113,8 @@ class ShapeSensingNeedleNode( NeedleNode ):
         # generate kappa_c and w_init message
         msg_kc = Float64MultiArray( data=self.kc_i )
         msg_winit = Float64MultiArray( data=self.w_init_i.tolist() )
+
+        self.get_logger().debug(f"Shapes: {pmat.shape}, {Rmat.shape}, {len(msg_shape.poses)}")
 
         # publish the messages
         self.pub_shape.publish( msg_shape )
