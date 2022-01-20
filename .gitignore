@@ -165,3 +165,6 @@ dmypy.json
 
 # PyCharm 
 .idea/
+
+# vim backup files
+*.swp
