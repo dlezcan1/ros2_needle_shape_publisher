@@ -12,6 +12,12 @@ The needle frame's origin is set to be the end of the insertion needle guide. Th
 * MATLAB R2021a
 * ROS Toolbox
 * Optimization Toolbox
+* Needle Shape Publisher Python Package
+
+To install the python dependencies, in your cloned repo, run the command:
+```bash
+pip install -r ./requirements.txt
+```
 
 ## Description
 NeedleShapePublisher class 
