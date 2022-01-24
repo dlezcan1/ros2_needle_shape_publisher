@@ -23,6 +23,7 @@ setup(
     entry_points={
         'console_scripts': [
                 'sensorized_shapesensing_needle = needle_shape_publisher.sensorized_shape_sensing_needle:main',
+                'sensorized_shapesensing_needle_threaded = needle_shape_publisher.sensorized_shape_sensing_needle_threaded:main',
                 'sensorized_needle = needle_shape_publisher.sensorized_needle:main',
                 'shapesensing_needle = needle_shape_publisher.shape_sensing_needle:main'
         ],
