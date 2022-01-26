@@ -8,7 +8,6 @@ from rcl_interfaces.msg import ParameterDescriptor
 from std_msgs.msg import Float64MultiArray, Header
 # custom package
 from needle_shape_sensing.intrinsics import SHAPETYPE as NEEDLESHAPETYPE
-from needle_shape_sensing import geometry
 
 from . import utilities
 from .sensorized_shape_sensing_needle import NeedleNode
@@ -81,8 +80,8 @@ class ShapeSensingNeedleNode( NeedleNode ):
 
         current_p, current_R = self.current_needle_pose
 
-        self.get_logger().debug(
-                f"__transform: pmat: {pmat.shape}, Rmat: {Rmat.shape}, p: {current_p.shape}, R:{current_R.shape}" )
+        # self.get_logger().debug(
+        #         f"__transform: pmat: {pmat.shape}, Rmat: {Rmat.shape}, p: {current_p.shape}, R:{current_R.shape}" )
 
         # rigid body transform the current needle pose
         if pmat is not None:
@@ -162,22 +161,23 @@ class ShapeSensingNeedleNode( NeedleNode ):
         """ Publish the 3D needle shape"""
         pmat, Rmat = self.get_needleshape()
 
-        # needle shape length
-        needle_L = np.linalg.norm( np.diff( pmat, axis=0 ), 2, 1 ).sum()
-        self.get_logger().debug(
-                f"Needle L: {self.ss_needle.length} | Needle Shape L: {needle_L} | Current Depth: {self.ss_needle.current_depth}" )
-
         # update initial kappa_c values
         self.kc_i = self.ss_needle.current_kc
         self.w_init_i = self.ss_needle.current_winit
 
         # check to make sure messages are not None
+
         if pmat is None or Rmat is None:
-            self.get_logger().warn( f"pmat or Rmat is None: pmat={pmat}, Rmat={Rmat}" )
-            self.get_logger().warn( f"Current shapetype: {self.ss_needle.current_shapetype}" )
+            # self.get_logger().warn( f"pmat or Rmat is None: pmat={pmat}, Rmat={Rmat}" )
+            # self.get_logger().warn( f"Current shapetype: {self.ss_needle.current_shapetype}" )
             return
 
         # if
+
+        # needle shape length
+        needle_L = np.linalg.norm( np.diff( pmat, axis=0 ), 2, 1 ).sum()
+        self.get_logger().debug(
+                f"Needle L: {self.ss_needle.length} | Needle Shape L: {needle_L} | Current Depth: {self.ss_needle.current_depth}" )
 
         # generate pose message
         header = Header( stamp=self.get_clock().now().to_msg() )
@@ -220,8 +220,14 @@ class ShapeSensingNeedleNode( NeedleNode ):
 
     def sub_needlepose_callback( self, msg: Pose ):
         """ Subscription to entrypoint topic """
-        self.current_needle_pose = utilities.msg2pose( msg )
-        self.current_needle_pose[ 1 ] = self.current_needle_pose @ self.R_NEEDLEPOSE  # update current needle pose
+        self.current_needle_pose = list( utilities.msg2pose( msg ) )
+        # self.get_logger().info(f"pose[0]: {self.current_needle_pose[0]}")
+        # self.get_logger().info(f"pose[1]: {self.current_needle_pose[1]}")
+        self.current_needle_pose[ 1 ] = self.current_needle_pose[ 1 ] @ self.R_NEEDLEPOSE  # update current needle pose
+
+        # update the insertion depth (y-coordinate is the insertion depth)
+        self.ss_needle.current_depth = min( self.current_needle_pose[ 0 ][ 1 ], self.ss_needle.length )
+        self.get_logger().debug( f"Current insertion depth: {self.ss_needle.current_depth}" )
 
         # update the history of orientations
         depth_ds = msg.position.y - msg.position.y % self.ss_needle.ds
