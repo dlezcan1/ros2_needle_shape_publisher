@@ -25,7 +25,10 @@ class ShapeSensingNeedleNode( NeedleNode ):
     PARAM_OPTIM_MAXITER_LB = 2
 
     # needle pose parameters
-    R_NEEDLEPOSE = geometry.rotx( -np.pi / 2 )  # +z-axis -> +y-axis
+    # R_NEEDLEPOSE = geometry.rotx( -np.pi / 2 )  # +z-axis -> +y-axis
+    R_NEEDLEPOSE = np.array( [ [ -1, 0, 0 ],
+                               [ 0, 0, 1 ],
+                               [ 0, 1, 0 ] ] )
 
     def __init__( self, name="ShapeSensingNeedle" ):
         super().__init__( name )
@@ -223,12 +226,12 @@ class ShapeSensingNeedleNode( NeedleNode ):
         # update the history of orientations
         depth_ds = msg.position.y - msg.position.y % self.ss_needle.ds
         theta = msg.orientation.y
-        if np.any( self.history_needle_pose[ 0 ] == depth_ds ): # check if we already have this value
+        if np.any( self.history_needle_pose[ 0 ] == depth_ds ):  # check if we already have this value
             idx = np.argwhere( self.history_needle_pose[ 0 ] == depth_ds ).ravel()
             self.history_needle_pose[ 1, idx ] = theta
 
         # if
-        else: # add a new value
+        else:  # add a new value
             np.hstack( (self.history_needle_pose, [ [ depth_ds ], [ theta ] ]) )
 
         # else

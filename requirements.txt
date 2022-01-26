@@ -1,2 +1,2 @@
 numpy
-git+https://github.com/dlezcan1/python-needle-shape-sensing.git
+needle-shape-sensing
