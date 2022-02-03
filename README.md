@@ -52,7 +52,7 @@ NeedleShapePublisher class
 * /needle/state/kappac: "std_msgs/msg/Float64MultiArray" the $\kappa_c$ measurements for all of the layers (currently supported for 2-layer insertions.) for the current shape.
 * /needle/state/winit: "std_msgs/msg/Float64MultiArray" a 3D vector of $\omega_{init}$ for the current shape.
 * /needle/state/curvatures: "std_msgs/msg/Float64MultiArray" an array of 3D vectors publishing the curvatures measured at each of the active areas.
-* /needle/state/current: "geometry_msgs/msg/PoseArray" the pose array of the needle shape in 0.5 mm increments
+* /needle/state/current_shape: "geometry_msgs/msg/PoseArray" the pose array of the needle shape in 0.5 mm increments
 * /needle/state/predicted: "geometry_msgs/msg/PoseArray" the predicted pose array of the needle shape in 0.5 mm increments (NOT IMPLEMENTED)
 
 ## Launch
