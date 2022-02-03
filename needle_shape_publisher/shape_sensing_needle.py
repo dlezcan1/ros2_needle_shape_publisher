@@ -180,7 +180,7 @@ class ShapeSensingNeedleNode( NeedleNode ):
                 f"Needle L: {self.ss_needle.length} | Needle Shape L: {needle_L} | Current Depth: {self.ss_needle.current_depth}" )
 
         # generate pose message
-        header = Header( stamp=self.get_clock().now().to_msg() )
+        header = Header( stamp=self.get_clock().now().to_msg(), frame_id='robot' )
         msg_shape = utilities.poses2msg( pmat, Rmat, header=header )
 
         # generate kappa_c and w_init message
