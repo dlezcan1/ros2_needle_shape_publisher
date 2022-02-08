@@ -61,7 +61,7 @@ class ShapeSensingNeedleNode( NeedleNode ):
         self.sub_curvatures = self.create_subscription( Float64MultiArray, 'state/curvatures',
                                                         self.sub_curvatures_callback, 10 )
         self.sub_entrypoint = self.create_subscription( Point, 'state/skin_entry', self.sub_entrypoint_callback, 10 )
-        self.sub_needlepose = self.create_subscription( Pose, 'state/pose', self.sub_needlepose_callback, 10 )
+        self.sub_needlepose = self.create_subscription( Pose, '/stage/state/needle_pose', self.sub_needlepose_callback, 10 )
 
         # create timers
         self.pub_shape_timer = self.create_timer( 0.05, self.publish_shape )
