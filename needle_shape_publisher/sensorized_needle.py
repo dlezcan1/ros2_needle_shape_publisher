@@ -96,7 +96,10 @@ class SensorizedNeedleNode( NeedleNode ):
         # get the FBG signals
         # TODO: perform appending by channel
         signals_dict = utilities.unpack_fbg_msg( msg )
-        signals = np.array( list( signals_dict.values() ) ).ravel()  # to be improved
+        self.get_logger().debug(f"Signals dictionary unpacked: {signals_dict}")
+        # signals = np.array( list( signals_dict.values() ) ).ravel()  # to be improved
+        signals = np.hstack(list(signals_dict.values())).ravel()
+        self.get_logger().debug(f"Signals unwrapped: {signals}")
         self.get_logger().debug(
                 f"Shape of signals: {signals.shape} | Shape of wl container: {self.__wavelength_container.shape}" )
 
