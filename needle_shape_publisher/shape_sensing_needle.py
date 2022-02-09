@@ -3,7 +3,7 @@ import numpy as np
 import rclpy
 from rclpy import Parameter
 # messages
-from geometry_msgs.msg import PoseArray, Point, Pose
+from geometry_msgs.msg import PoseArray, Point, Pose, PoseStamped
 from rcl_interfaces.msg import ParameterDescriptor
 from std_msgs.msg import Float64MultiArray, Header
 # custom package
@@ -61,7 +61,7 @@ class ShapeSensingNeedleNode( NeedleNode ):
         self.sub_curvatures = self.create_subscription( Float64MultiArray, 'state/curvatures',
                                                         self.sub_curvatures_callback, 10 )
         self.sub_entrypoint = self.create_subscription( Point, 'state/skin_entry', self.sub_entrypoint_callback, 10 )
-        self.sub_needlepose = self.create_subscription( Pose, '/stage/state/needle_pose', self.sub_needlepose_callback, 10 )
+        self.sub_needlepose = self.create_subscription( PoseStamped, '/stage/state/needle_pose', self.sub_needlepose_callback, 10 )
 
         # create timers
         self.pub_shape_timer = self.create_timer( 0.05, self.publish_shape )
@@ -218,9 +218,9 @@ class ShapeSensingNeedleNode( NeedleNode ):
 
     # sub_entrypoint_callback
 
-    def sub_needlepose_callback( self, msg: Pose ):
+    def sub_needlepose_callback( self, msg: PoseStamped ):
         """ Subscription to entrypoint topic """
-        self.current_needle_pose = list( utilities.msg2pose( msg ) )
+        self.current_needle_pose = list( utilities.msg2pose( msg.pose ) )
         # self.get_logger().info(f"pose[0]: {self.current_needle_pose[0]}")
         # self.get_logger().info(f"pose[1]: {self.current_needle_pose[1]}")
         self.current_needle_pose[ 1 ] = self.current_needle_pose[ 1 ] @ self.R_NEEDLEPOSE  # update current needle pose
@@ -230,8 +230,8 @@ class ShapeSensingNeedleNode( NeedleNode ):
         self.get_logger().debug( f"Current insertion depth: {self.ss_needle.current_depth}" )
 
         # update the history of orientations
-        depth_ds = msg.position.y - msg.position.y % self.ss_needle.ds
-        theta = msg.orientation.y
+        depth_ds = msg.pose.position.y - msg.pose.position.y % self.ss_needle.ds
+        theta = msg.pose.orientation.y
         if np.any( self.history_needle_pose[ 0 ] == depth_ds ):  # check if we already have this value
             idx = np.argwhere( self.history_needle_pose[ 0 ] == depth_ds ).ravel()
             self.history_needle_pose[ 1, idx ] = theta
