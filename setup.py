@@ -12,6 +12,8 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name, glob.glob('launch/*.launch.*')),
+        ('share/' + package_name + "/needle_data", glob.glob('needle_data/*/needle_params*.json')),
+        # ('share/' + package_name + "/config", glob.glob('config/*.yaml')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
