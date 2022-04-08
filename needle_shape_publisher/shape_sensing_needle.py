@@ -140,7 +140,7 @@ class ShapeSensingNeedleNode( NeedleNode ):
         dL = self.ss_needle.length - self.ss_needle.current_depth
         if dL > self.ss_needle.ds and pmat is not None and Rmat is not None:
             # generate other needle lengths in ds increments
-            dL_air = self.air_depth
+            dL_air = 0 # self.air_depth
             dL_straight = dL - dL_air
             L_air = np.arange( 0, (dL_air // self.ss_needle.ds + 1) * self.ss_needle.ds, self.ss_needle.ds )
             L_straight = np.arange( 0, (dL_straight // self.ss_needle.ds + 1) * self.ss_needle.ds, self.ss_needle.ds )
@@ -151,12 +151,14 @@ class ShapeSensingNeedleNode( NeedleNode ):
             Rmat_straight = np.eye( 3 )[ np.newaxis ].repeat( len( L_straight ), axis=0 )  # straight needle
 
             # generate air deflection point
-            pmat_air = AirDeflection.shape_quadratic( L_air, self.R_NEEDLEPOSE.T @ self.current_insertion_pt )
-            Rmat_air = np.eye( 3 )[ np.newaxis ].repeat( len( L_air ), axis=0 )  # TODO: update for actual pose
+            if dL_air > 0:
+                pmat_air = AirDeflection.shape_quadratic( L_air, self.R_NEEDLEPOSE.T @ self.current_insertion_pt )
+                Rmat_air = np.eye( 3 )[ np.newaxis ].repeat( len( L_air ), axis=0 )  # TODO: update for actual pose
 
+                pmat_air += pmat_straight[ -1 ]
             # update the needle shapes to move coordinate frames
-            pmat_air += pmat_straight[ -1 ]
-            pmat += pmat_air[ -1 ]
+            # pmat_air += pmat_straight[ -1 ]
+            pmat += pmat_straight[ -1 ]
 
             # trim off the bases so no redundancy
             # pmat_air = pmat_air[ 1: ]
@@ -165,8 +167,10 @@ class ShapeSensingNeedleNode( NeedleNode ):
             # Rmat = Rmat[ 1: ]
 
             # append to the current pmat and Rmat
-            pmat = np.vstack( (pmat_straight, pmat_air, pmat) )
-            Rmat = np.concatenate( (Rmat_straight, Rmat_air, Rmat), 0 )
+            # pmat = np.vstack( (pmat_straight, pmat_air, pmat) )
+            # Rmat = np.concatenate( (Rmat_straight, Rmat_air, Rmat), 0 )
+            pmat = np.vstack( (pmat_straight, pmat) )
+            Rmat = np.concatenate( (Rmat_straight, Rmat), 0 )
 
         # if
         elif dL > 0 and pmat is not None and Rmat is not None:  # less than ds increment
