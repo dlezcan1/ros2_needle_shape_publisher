@@ -15,28 +15,43 @@ from . import utilities
 class SensorizedNeedleNode( NeedleNode ):
     """Needle to handle sensor calibration/curvatures"""
     # - FBG signal parameters
-    PARAM_NUMSIGNALS = ".".join( [ NeedleNode.PARAM_NEEDLE, "sensor.numberSignals" ] )  # #signals to gather
+    # -- number of signals to gather
+    PARAM_NUMSIGNALS = ".".join( [ NeedleNode.PARAM_NEEDLE, "sensor.numberSignals" ] )
+    # -- temperature compensation
+    PARAM_TEMPCOMP = ".".join( [ NeedleNode.PARAM_NEEDLE, "sensor.temperatureCompensate" ] )
 
     def __init__( self, name="SensorizedNeedle" ):
         super().__init__( name )
 
         # declare and get parameters
-        pd_numsamples = ParameterDescriptor( name=self.PARAM_NUMSIGNALS, type=Parameter.Type.INTEGER.value )
-        self.num_samples = self.declare_parameter( pd_numsamples.name, descriptor=pd_numsamples,
-                                                   value=200 ).get_parameter_value().integer_value
+        pd_numsamples = ParameterDescriptor(
+                name=self.PARAM_NUMSIGNALS, type=Parameter.Type.INTEGER.value )
+        self.num_samples = self.declare_parameter(
+                pd_numsamples.name, descriptor=pd_numsamples,
+                value=200 ).get_parameter_value().integer_value
+
+        pd_tempcomp = ParameterDescriptor(
+                name=self.PARAM_TEMPCOMP, type=Parameter.Type.BOOL.value,
+                description="Whether to perform temperature compensation or not.",
+                )
+        self.temperature_compensate = self.declare_parameter(
+                pd_tempcomp.name, descriptor=pd_tempcomp, value=True
+                ).get_parameter_value().bool_value
 
         # make all positive since we are using processed wavelengths
         self.ss_needle.ref_wavelengths = np.ones_like( self.ss_needle.ref_wavelengths )
         #
         # container of wavelengths
-        self.__wavelength_container = np.zeros( (self.num_samples,
-                                                 self.ss_needle.num_channels * self.ss_needle.num_activeAreas) )
+        self.__wavelength_container = np.zeros(
+                (self.num_samples,
+                 self.ss_needle.num_channels * self.ss_needle.num_activeAreas) )
         self.__wavelength_container_idx = 0  # the row index to place the sample
         self.__wavelength_container_full = False  # whether we have collected a full number of samples
 
         # create subscriptions
-        self.sub_signals = self.create_subscription( Float64MultiArray, 'sensor/processed', self.sub_signals_callback,
-                                                     10 )
+        self.sub_signals = self.create_subscription(
+                Float64MultiArray, 'sensor/processed', self.sub_signals_callback,
+                10 )
         # create publishers
         self.pub_curvatures = self.create_publisher( Float64MultiArray, 'state/curvatures', 10 )
 
@@ -64,10 +79,22 @@ class SensorizedNeedleNode( NeedleNode ):
                 except ValueError as e:
                     successful = False
                     reasons.append( f"{self.PARAM_NUMSIGNALS} must be > 0" + '\n' + str( e ) )
-                    self.get_logger().error( "Update failed. Did not set the updated number of signals." )
+                    self.get_logger().error(
+                            "Update failed. Did not set the updated number of signals." )
 
                 # except
-            # elif: parameter: NUMSIGNALS
+            # if: parameter: NUMSIGNALS
+
+            elif param.name == self.PARAM_TEMPCOMP:
+                if param.type_ is Parameter.Type.BOOL:
+                    self.temperature_compensate = param.get_parameter_value().bool_value
+
+                else:
+                    successful = False
+
+            # elif: TEMPCOMP
+            else:
+                reasons.append( f"{param.name} is not a valid settable-parameter." )
 
         # for
 
@@ -79,13 +106,16 @@ class SensorizedNeedleNode( NeedleNode ):
         """ Publish the curvatures of the shape-sensing needle"""
         # current_curvatures are N x 2 ( columns are: x,  y ) -> ravel('F') -> (X_AA1, X_AA2, ..., Y_AA1, Y_AA2,...)
         itemsize = self.ss_needle.current_curvatures.dtype.itemsize
-        dimx = MultiArrayDimension( label="x", stride=itemsize,
-                                    size=self.ss_needle.current_curvatures.shape[ 0 ] * itemsize )
-        dimy = MultiArrayDimension( label="y", stride=itemsize,
-                                    size=self.ss_needle.current_curvatures.shape[ 0 ] * itemsize )
+        dimx = MultiArrayDimension(
+                label="x", stride=itemsize,
+                size=self.ss_needle.current_curvatures.shape[ 0 ] * itemsize )
+        dimy = MultiArrayDimension(
+                label="y", stride=itemsize,
+                size=self.ss_needle.current_curvatures.shape[ 0 ] * itemsize )
 
-        msg = Float64MultiArray( data=self.ss_needle.current_curvatures.ravel( order='F' ).tolist(),
-                                 layout=MultiArrayLayout( dim=[ dimx, dimy ] ) )
+        msg = Float64MultiArray(
+                data=self.ss_needle.current_curvatures.ravel( order='F' ).tolist(),
+                layout=MultiArrayLayout( dim=[ dimx, dimy ] ) )
 
         self.pub_curvatures.publish( msg )
 
@@ -96,10 +126,17 @@ class SensorizedNeedleNode( NeedleNode ):
         # get the FBG signals
         # TODO: perform appending by channel
         signals_dict = utilities.unpack_fbg_msg( msg )
-        self.get_logger().debug(f"Signals dictionary unpacked: {signals_dict}")
+        self.get_logger().debug( f"Signals dictionary unpacked: {signals_dict}" )
         # signals = np.array( list( signals_dict.values() ) ).ravel()  # to be improved
-        signals = np.hstack(list(signals_dict.values())).ravel()
-        self.get_logger().debug(f"Signals unwrapped: {signals}")
+        signals = np.hstack( list( signals_dict.values() ) ).ravel()
+
+        # perform temperature compensation
+        if self.temperature_compensate:
+            signals = self.ss_needle.temperature_compensate( signals, arg_check=True )
+
+        # if
+
+        self.get_logger().debug( f"Signals unwrapped: {signals}" )
         self.get_logger().debug(
                 f"Shape of signals: {signals.shape} | Shape of wl container: {self.__wavelength_container.shape}" )
 
@@ -135,16 +172,19 @@ class SensorizedNeedleNode( NeedleNode ):
             elif num_samples > self.num_samples:  # grow the size
                 if self.__wavelength_container_full:
                     self.__wavelength_container = np.vstack(
-                            (self.__wavelength_container[ self.__wavelength_container_idx: ],
-                             self.__wavelength_container[
-                             :self.__wavelength_container_idx ]) )  # reorder to be @ bottom
+                            (
+                                    self.__wavelength_container[ self.__wavelength_container_idx: ],
+                                    self.__wavelength_container[ :self.__wavelength_container_idx ]
+                                    ) )  # reorder to be @ bottom
                     self.__wavelength_container_idx = self.num_samples - 1  # place pointer at the end
 
                 # if
 
                 # append to the wavelength container
-                self.__wavelength_container = np.vstack( (self.__wavelength_container, np.zeros(
-                        (num_samples - self.num_samples, self.__wavelength_container.shape[ 1 ]) )) )
+                self.__wavelength_container = np.vstack(
+                        (self.__wavelength_container, np.zeros(
+                                (num_samples - self.num_samples,
+                                 self.__wavelength_container.shape[ 1 ]) )) )
 
                 self.__wavelength_container_full = False
 
@@ -158,7 +198,7 @@ class SensorizedNeedleNode( NeedleNode ):
             # if
             self.__wavelength_container_idx %= self.num_samples
 
-        # else
+        # elif
 
     # update_numsamples
 
