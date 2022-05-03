@@ -250,7 +250,7 @@ class ShapeSensingNeedleNode( NeedleNode ):
         """ Subscription to entrypoint topic """
         # TODO: update current needle insertion depth
         self.current_insertion_pt = np.array( [ msg.x, msg.y, msg.z ] )  # assume it is in the
-        self.insertion_depth = max( 0, self.current_needle_pose[ 1 ] - self.current_insertion_pt[
+        self.insertion_depth = max( 0, self.current_needle_pose[ 0 ][ 1 ] - self.current_insertion_pt[
             1 ] )  # assume in stage frame
         self.air_depth = np.linalg.norm( self.current_insertion_pt )
 

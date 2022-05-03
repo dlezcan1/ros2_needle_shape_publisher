@@ -142,6 +142,10 @@ class SensorizedNeedleNode( NeedleNode ):
                 f"Shape of signals: {signals.shape} | Shape of wl container: {self.__wavelength_container.shape}" )
 
         # add the signals to the container
+        if signals.shape[0] != self.__wavelength_container.shape[1]: # check if the correct size to avoid errors.
+            self.get_logger().warn(f"Wrong sensor shape size! Size is {signals.shape}, needs size of {(self.__wavelength_container.shape[1],)}")
+            return 
+        # if 
         self.__wavelength_container[ self.__wavelength_container_idx ] = signals
         self.__wavelength_container_idx += 1
         if self.__wavelength_container_idx >= self.num_samples:

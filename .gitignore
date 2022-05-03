@@ -163,8 +163,9 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# PyCharm 
+# IDE Project settings 
 .idea/
+.vscode/
 
 # vim backup files
 *.swp
